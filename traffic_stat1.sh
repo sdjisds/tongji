@@ -21,13 +21,19 @@ DOWNLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.dow
 
 # 确认获取的上传和下载流量是否为空或为零
 if [ -z "$UPLOAD" ] || [ "$UPLOAD" -eq 0 ]; then
-    echo "Warning: Upload data is empty or zero."
-    UPLOAD=0
+    echo "Warning: Upload data is empty or zero. Attempting again."
+    UPLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.upload')
 fi
 
 if [ -z "$DOWNLOAD" ] || [ "$DOWNLOAD" -eq 0 ]; then
-    echo "Warning: Download data is empty or zero."
-    DOWNLOAD=0
+    echo "Warning: Download data is empty or zero. Attempting again."
+    DOWNLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.download')
+fi
+
+# 确保UPLOAD和DOWNLOAD为有效数字
+if ! [[ "$UPLOAD" =~ ^[0-9]+$ ]] || ! [[ "$DOWNLOAD" =~ ^[0-9]+$ ]]; then
+    echo "Error: Invalid data for Upload or Download."
+    exit 1
 fi
 
 # 获取月累计流量
@@ -65,7 +71,6 @@ curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
     -d text="$MONTHLY_MESSAGE"
 
 # 每月1号重置月累计流量
-# 使用当前月份与上次的月份比较
 if [ "$DAY" == "01" ]; then
     echo "Resetting monthly traffic data."
     echo "0" > $MONTHLY_FILE
