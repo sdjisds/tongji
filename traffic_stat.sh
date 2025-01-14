@@ -1,80 +1,55 @@
 #!/bin/bash
 
-# 自动检测网卡
-INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n 1)
-
-# 确保 Telegram Bot Token 和 Chat ID 通过环境变量传递
+# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
-    echo "请在运行时通过环境变量设置 BOT_TOKEN 和 CHAT_ID！"
+    echo "BOT_TOKEN or CHAT_ID is not set!"
     exit 1
 fi
 
-# 设置流量统计文件路径
-LOG_FILE="/var/log/traffic_log.txt"
-MONTHLY_LOG_FILE="/var/log/monthly_traffic_log.txt"
+# 获取流量统计，使用 ifstat 命令（也可以根据你的系统选择其他方式）
+# 假设你正在监控的网卡是 eth0，你可以根据实际情况修改网卡名称
+INTERFACE="eth0"
+UPLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $1}')
+DOWNLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $2}')
+
+# 获取当前时间的小时、分钟、秒
+TIME=$(date +%H:%M:%S)
+HOUR=$(echo $TIME | cut -d':' -f1)
+MINUTE=$(echo $TIME | cut -d':' -f2)
+SECOND=$(echo $TIME | cut -d':' -f3)
 
 # 获取当前日期
-DATE=$(date "+%Y-%m-%d %H:%M:%S")
-DAY=$(date "+%d")   # 获取当前的天（1-31）
-MONTH=$(date "+%m") # 获取当前的月（01-12）
+DATE=$(date +'%Y-%m-%d')
 
-# 检查是否是每月1号，若是，重置流量统计
-if [ "$DAY" -eq 01 ]; then
-    echo "[$DATE] 每月1号，重置流量统计为0" > $LOG_FILE
-    echo "[$DATE] 每月1号，重置本月累计流量统计为0" > $MONTHLY_LOG_FILE
+# 计算流量的总和，单位为 KB
+TOTAL=$(echo "$UPLOAD + $DOWNLOAD" | bc)
+
+# 获取本月流量累计值（可以根据需要存储到文件或数据库中，这里假设是 /root/traffic_data.txt）
+MONTHLY_FILE="/root/traffic_data.txt"
+if [ ! -f $MONTHLY_FILE ]; then
+    echo "0" > $MONTHLY_FILE
 fi
+MONTHLY_TOTAL=$(cat $MONTHLY_FILE)
 
-# 获取当前的接收和发送字节数
-RX_BYTES=$(cat /proc/net/dev | grep "$INTERFACE" | tr : " " | awk '{print $2}')
-TX_BYTES=$(cat /proc/net/dev | grep "$INTERFACE" | tr : " " | awk '{print $10}')
+# 输出当天流量统计
+echo "Date: $DATE"
+echo "Upload: $UPLOAD KB"
+echo "Download: $DOWNLOAD KB"
+echo "Total: $TOTAL KB"
 
-# 读取上一次的流量数据（如果文件存在）
-if [ -f "$LOG_FILE" ]; then
-    LAST_RX_BYTES=$(awk 'NR==1 {print $2}' $LOG_FILE)
-    LAST_TX_BYTES=$(awk 'NR==1 {print $3}' $LOG_FILE)
-else
-    LAST_RX_BYTES=0
-    LAST_TX_BYTES=0
-fi
+# 更新本月的流量累计数据
+MONTHLY_TOTAL=$(echo "$MONTHLY_TOTAL + $TOTAL" | bc)
+echo $MONTHLY_TOTAL > $MONTHLY_FILE
 
-# 读取本月累计流量数据（如果文件存在）
-if [ -f "$MONTHLY_LOG_FILE" ]; then
-    LAST_MONTH_RX_BYTES=$(awk 'NR==1 {print $2}' $MONTHLY_LOG_FILE)
-    LAST_MONTH_TX_BYTES=$(awk 'NR==1 {print $3}' $MONTHLY_LOG_FILE)
-else
-    LAST_MONTH_RX_BYTES=0
-    LAST_MONTH_TX_BYTES=0
-fi
-
-# 计算当前流量和上次流量的差值（单位字节）
-RX_DIFF=$((RX_BYTES - LAST_RX_BYTES))
-TX_DIFF=$((TX_BYTES - LAST_TX_BYTES))
-
-# 计算本月的累计流量（单位字节）
-MONTHLY_RX_DIFF=$((RX_BYTES - LAST_MONTH_RX_BYTES))
-MONTHLY_TX_DIFF=$((TX_BYTES - LAST_MONTH_TX_BYTES))
-
-# 将字节数转换为MB
-RX_MB=$(echo "scale=2; $RX_DIFF/1024/1024" | bc)
-TX_MB=$(echo "scale=2; $TX_DIFF/1024/1024" | bc)
-MONTHLY_RX_MB=$(echo "scale=2; $MONTHLY_RX_DIFF/1024/1024" | bc)
-MONTHLY_TX_MB=$(echo "scale=2; $MONTHLY_TX_DIFF/1024/1024" | bc)
-
-# 计算上传和下载的总和
-TOTAL_MB=$(echo "scale=2; $RX_MB + $TX_MB" | bc)
-MONTHLY_TOTAL_MB=$(echo "scale=2; $MONTHLY_RX_MB + $MONTHLY_TX_MB" | bc)
-
-# 将当前流量数据保存到文件（用于下次比较）
-echo "$DATE $RX_BYTES $TX_BYTES" > $LOG_FILE
-
-# 将本月累计流量数据保存到文件（用于下次比较）
-echo "$DATE $RX_BYTES $TX_BYTES" > $MONTHLY_LOG_FILE
-
-# 生成消息内容
-MESSAGE="[$DATE] 今日流量统计：\n上传流量: $TX_MB MB\n下载流量: $RX_MB MB\n总流量: $TOTAL_MB MB\n\n"
-MESSAGE+="[$DATE] 本月累计流量统计：\n上传流量: $MONTHLY_TX_MB MB\n下载流量: $MONTHLY_RX_MB MB\n总流量: $MONTHLY_TOTAL_MB MB"
-
-# 通过 curl 向 Telegram 发送消息
+# 推送当天流量统计到 Telegram
+MESSAGE="📅 Date: $DATE\n⏰ Time: $TIME\n📤 Upload: $UPLOAD KB\n📥 Download: $DOWNLOAD KB\n💥 Total: $TOTAL KB"
 curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-    -d chat_id="$CHAT_ID" \
+    -d chat_id=$CHAT_ID \
     -d text="$MESSAGE"
+
+# 推送本月累计流量统计到 Telegram
+MONTHLY_MESSAGE="📅 Month's Total Traffic\n💥 Monthly Total: $MONTHLY_TOTAL KB"
+curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+    -d chat_id=$CHAT_ID \
+    -d text="$MONTHLY_MESSAGE"
+
