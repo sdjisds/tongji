@@ -7,8 +7,8 @@ if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
 fi
 
 # 获取流量统计，使用 ifstat 命令（也可以根据你的系统选择其他方式）
-# 假设你正在监控的网卡是 eth0，你可以根据实际情况修改网卡名称
-INTERFACE="eth0"
+# 假设你正在监控的网卡是 ens5，你可以根据实际情况修改网卡名称
+INTERFACE="ens5"
 
 # 使用 ifstat 获取上传和下载流量，避免空值导致错误
 UPLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $1}')
