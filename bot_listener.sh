@@ -33,8 +33,11 @@ while true; do
         /root/vps-traffic-monitor/get_traffic_info.sh "$CHAT_ID" >> /root/bot_listener_debug.log
     fi
 
-    # 更新 last_update_id 为当前的 update_id，以防重复处理
-    last_update_id=$UPDATE_ID
+    # 确保我们只处理一次此消息，更新 last_update_id
+    if [ -n "$UPDATE_ID" ]; then
+        echo "Updating last_update_id to $UPDATE_ID" >> /root/bot_listener_debug.log
+        last_update_id=$UPDATE_ID
+    fi
 
     # 每次检查后等待 2 秒，避免过度调用 API
     sleep 2
