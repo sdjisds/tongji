@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设定仓库 URL
-REPO_URL="https://github.com/sdjisds/vps-traffic-monitor.git"
+REPO_URL="https://github.com/yourusername/vps-traffic-monitor.git"
 INSTALL_DIR="$HOME/vps-traffic-monitor"
 
 # 更新系统并安装必需的工具
@@ -31,9 +31,9 @@ source ~/.bashrc
 # 确保脚本可执行
 chmod +x traffic_stat.sh
 
-# 设置定时任务：每天10点执行流量统计脚本
-(crontab -l 2>/dev/null; echo "0 10 * * * $INSTALL_DIR/traffic_stat.sh") | crontab -
+# 设置定时任务：每天晚上10:30执行流量统计脚本
+(crontab -l 2>/dev/null; echo "30 22 * * * $INSTALL_DIR/traffic_stat.sh") | crontab -
 
 # 完成安装
-echo "安装完成。流量统计脚本将在每天 10:00 自动执行。"
+echo "安装完成。流量统计脚本将在每天晚上 10:30 自动执行。"
 echo "你可以手动执行脚本通过运行 $INSTALL_DIR/traffic_stat.sh 来立即获取流量统计。"
