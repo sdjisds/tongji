@@ -9,8 +9,18 @@ fi
 # 获取流量统计，使用 ifstat 命令（也可以根据你的系统选择其他方式）
 # 假设你正在监控的网卡是 eth0，你可以根据实际情况修改网卡名称
 INTERFACE="eth0"
+
+# 使用 ifstat 获取上传和下载流量，如果为空，设为 0
 UPLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $1}')
 DOWNLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $2}')
+
+if [ -z "$UPLOAD" ]; then
+    UPLOAD=0
+fi
+
+if [ -z "$DOWNLOAD" ]; then
+    DOWNLOAD=0
+fi
 
 # 获取当前时间的小时、分钟、秒
 TIME=$(date +%H:%M:%S)
@@ -52,4 +62,3 @@ MONTHLY_MESSAGE="📅 Month's Total Traffic\n💥 Monthly Total: $MONTHLY_TOTAL 
 curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
     -d chat_id=$CHAT_ID \
     -d text="$MONTHLY_MESSAGE"
-
