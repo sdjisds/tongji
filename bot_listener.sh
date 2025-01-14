@@ -6,17 +6,21 @@ if [ -z "$BOT_TOKEN" ]; then
     exit 1
 fi
 
+# 初始化 last_update_id 为 -1，表示没有处理任何消息
+last_update_id=-1
+
 # 获取 Telegram 更新
 while true; do
-    # 获取未处理的消息
-    RESPONSE=$(curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=-1")
-    
+    # 获取未处理的消息，使用 last_update_id 作为 offset
+    RESPONSE=$(curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=$((last_update_id + 1))")
+
     # 输出调试信息
     echo "Response from getUpdates: $RESPONSE" >> /root/bot_listener_debug.log
 
     # 提取 chat_id 和消息文本
     CHAT_ID=$(echo $RESPONSE | jq -r '.result[0].message.chat.id')
     MESSAGE_TEXT=$(echo $RESPONSE | jq -r '.result[0].message.text')
+    UPDATE_ID=$(echo $RESPONSE | jq -r '.result[0].update_id')
 
     # 输出收到的消息内容
     echo "Received message: $MESSAGE_TEXT" >> /root/bot_listener_debug.log
@@ -28,6 +32,9 @@ while true; do
         # 执行流量获取脚本并将结果发送到 Telegram
         /root/vps-traffic-monitor/get_traffic_info.sh "$CHAT_ID" >> /root/bot_listener_debug.log
     fi
+
+    # 更新 last_update_id 为当前的 update_id，以防重复处理
+    last_update_id=$UPDATE_ID
 
     # 每次检查后等待 2 秒，避免过度调用 API
     sleep 2
