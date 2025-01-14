@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 检查 BOT_TOKEN 是否设置
+# 确保 BOT_TOKEN 已设置
 if [ -z "$BOT_TOKEN" ]; then
     echo "BOT_TOKEN is not set!" >> /root/bot_listener_debug.log
     exit 1
