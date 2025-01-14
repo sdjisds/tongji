@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量
+# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量11
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
     echo "BOT_TOKEN or CHAT_ID is not set!"
     exit 1
@@ -13,27 +13,18 @@ INTERFACE="ens5"
 DATE=$(date +'%Y-%m-%d')
 TIME=$(date +'%H:%M:%S')
 MONTH=$(date +'%m')
-DAY=$(date +'%d')
 
-# 获取当天的流量统计（字节）
-UPLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.upload')
-DOWNLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.download')
+# 获取当天的流量统计（从 vnstat 获取 JSON 数据）
+UPLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.day[0].rx')
+DOWNLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.day[0].tx')
 
-# 确认获取的上传和下载流量是否为空或为零
-if [ -z "$UPLOAD" ] || [ "$UPLOAD" -eq 0 ]; then
-    echo "Warning: Upload data is empty or zero. Attempting again."
-    UPLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.upload')
+# 如果上传或下载流量为空，设置为 0
+if [ "$UPLOAD" == "null" ]; then
+    UPLOAD=0
 fi
 
-if [ -z "$DOWNLOAD" ] || [ "$DOWNLOAD" -eq 0 ]; then
-    echo "Warning: Download data is empty or zero. Attempting again."
-    DOWNLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.today.download')
-fi
-
-# 确保UPLOAD和DOWNLOAD为有效数字
-if ! [[ "$UPLOAD" =~ ^[0-9]+$ ]] || ! [[ "$DOWNLOAD" =~ ^[0-9]+$ ]]; then
-    echo "Error: Invalid data for Upload or Download."
-    exit 1
+if [ "$DOWNLOAD" == "null" ]; then
+    DOWNLOAD=0
 fi
 
 # 获取月累计流量
@@ -71,7 +62,6 @@ curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
     -d text="$MONTHLY_MESSAGE"
 
 # 每月1号重置月累计流量
-if [ "$DAY" == "01" ]; then
-    echo "Resetting monthly traffic data."
+if [ "$MONTH" != "$(date +'%m')" ]; then
     echo "0" > $MONTHLY_FILE
 fi
