@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保 BOT_TOKEN 和 CHAT_ID 已设置
+# 确保 BOT_TOKEN 已设置
 if [ -z "$BOT_TOKEN" ]; then
     echo "BOT_TOKEN is not set!" >> /root/bot_listener_debug.log
     exit 1
@@ -46,7 +46,7 @@ while true; do
             /root/vps-traffic-monitor/get_traffic_info.sh "$CHAT_ID" >> /root/bot_listener_debug.log
         fi
 
-        # 更新 last_update_id 并写入文件，确保不会重复处理相同的消息
+        # 只更新 last_update_id 在新消息被处理时
         if [ -n "$UPDATE_ID" ]; then
             echo "Updating last_update_id to $UPDATE_ID" >> /root/bot_listener_debug.log
             echo "$UPDATE_ID" > "$last_update_file"
