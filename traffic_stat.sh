@@ -10,8 +10,13 @@ fi
 INTERFACE="ens5"
 
 # 使用 ifstat 获取上传和下载流量，避免空值导致错误
-UPLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $1}')
-DOWNLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $2}')
+IFSTAT_OUTPUT=$(ifstat -i $INTERFACE 1 1)
+
+# 输出 ifstat 返回的原始数据，用于调试
+echo "ifstat output: $IFSTAT_OUTPUT"
+
+UPLOAD=$(echo "$IFSTAT_OUTPUT" | awk 'NR==3 {print $1}')
+DOWNLOAD=$(echo "$IFSTAT_OUTPUT" | awk 'NR==3 {print $2}')
 
 # 输出调试信息，检查上传和下载数据是否正确
 echo "UPLOAD (in KB): $UPLOAD"
@@ -36,7 +41,9 @@ SECOND=$(echo $TIME | cut -d':' -f3)
 DATE=$(date +'%Y-%m-%d')
 
 # 计算流量的总和，单位转换为 GB
-TOTAL=$(echo "scale=2; ($UPLOAD + $DOWNLOAD) / 1024" | bc)
+UPLOAD_GB=$(echo "scale=2; $UPLOAD / 1024" | bc)
+DOWNLOAD_GB=$(echo "scale=2; $DOWNLOAD / 1024" | bc)
+TOTAL=$(echo "scale=2; $UPLOAD_GB + $DOWNLOAD_GB" | bc)
 
 # 获取本月流量累计值（可以根据需要存储到文件或数据库中，这里假设是 /root/traffic_data.txt）
 MONTHLY_FILE="/root/traffic_data.txt"
@@ -47,8 +54,8 @@ MONTHLY_TOTAL=$(cat $MONTHLY_FILE)
 
 # 输出当天流量统计
 echo "Date: $DATE"
-echo "Upload: $(echo "scale=2; $UPLOAD / 1024" | bc) MB"
-echo "Download: $(echo "scale=2; $DOWNLOAD / 1024" | bc) MB"
+echo "Upload: $UPLOAD_GB GB"
+echo "Download: $DOWNLOAD_GB GB"
 echo "Total: $TOTAL GB"
 
 # 更新本月的流量累计数据
@@ -56,7 +63,7 @@ MONTHLY_TOTAL=$(echo "scale=2; $MONTHLY_TOTAL + $TOTAL" | bc)
 echo $MONTHLY_TOTAL > $MONTHLY_FILE
 
 # 推送当天流量统计到 Telegram
-MESSAGE="📅 Date: $DATE\n⏰ Time: $TIME\n📤 Upload: $(echo "scale=2; $UPLOAD / 1024" | bc) MB\n📥 Download: $(echo "scale=2; $DOWNLOAD / 1024" | bc) MB\n💥 Total: $TOTAL GB"
+MESSAGE="📅 Date: $DATE\n⏰ Time: $TIME\n📤 Upload: $UPLOAD_GB GB\n📥 Download: $DOWNLOAD_GB GB\n💥 Total: $TOTAL GB"
 curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
     -d chat_id=$CHAT_ID \
     -d text="$MESSAGE"
