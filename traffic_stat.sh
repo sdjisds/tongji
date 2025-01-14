@@ -3,15 +3,11 @@
 # 自动检测网卡
 INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n 1)
 
-# Telegram Bot 配置
-CONFIG_FILE="config.cfg"
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "配置文件 config.cfg 不存在，请先配置 bot token 和 chat_id"
+# 确保 Telegram Bot Token 和 Chat ID 通过环境变量传递
+if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+    echo "请在运行时通过环境变量设置 BOT_TOKEN 和 CHAT_ID！"
     exit 1
 fi
-
-# 读取配置文件
-source "$CONFIG_FILE"
 
 # 设置流量统计文件路径
 LOG_FILE="/var/log/traffic_log.txt"
