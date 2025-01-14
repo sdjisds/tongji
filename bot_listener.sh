@@ -11,9 +11,13 @@ while true; do
     # 获取未处理的消息
     RESPONSE=$(curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=-1")
     
+    echo "Response from getUpdates: $RESPONSE" >> /root/bot_listener.log
+
     # 提取 chat_id 和消息文本
     CHAT_ID=$(echo $RESPONSE | jq -r '.result[0].message.chat.id')
     MESSAGE_TEXT=$(echo $RESPONSE | jq -r '.result[0].message.text')
+
+    echo "Received message: $MESSAGE_TEXT" >> /root/bot_listener.log
 
     # 如果有消息，检查指令
     if [ "$MESSAGE_TEXT" == "/getTraffic" ]; then
