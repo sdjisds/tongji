@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量11
+# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量12
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
     echo "BOT_TOKEN or CHAT_ID is not set!"
     exit 1
