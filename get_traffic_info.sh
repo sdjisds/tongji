@@ -1,34 +1,25 @@
 #!/bin/bash
 
-# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量
-if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
-    echo "BOT_TOKEN or CHAT_ID is not set!"
-    exit 1
-fi
+# 获取 chat_id 作为脚本参数
+CHAT_ID=$1
 
-# 获取流量统计，使用 ifstat 命令（也可以根据你的系统选择其他方式）
-INTERFACE="eth0"
+# 获取当前流量信息
+UPLOAD=$(ifstat -i eth0 1 1 | awk 'NR==3 {print $1}')
+DOWNLOAD=$(ifstat -i eth0 1 1 | awk 'NR==3 {print $2}')
+TOTAL=$(echo "$UPLOAD + $DOWNLOAD" | bc)
 
-# 使用 ifstat 获取上传和下载流量，避免空值导致错误
-UPLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $1}')
-DOWNLOAD=$(ifstat -i $INTERFACE 1 1 | awk 'NR==3 {print $2}')
+# 转换为 GB
+UPLOAD_GB=$(echo "scale=2; $UPLOAD / 1024 / 1024" | bc)
+DOWNLOAD_GB=$(echo "scale=2; $DOWNLOAD / 1024 / 1024" | bc)
+TOTAL_GB=$(echo "scale=2; $TOTAL / 1024 / 1024" | bc)
 
-# 如果获取的上传和下载流量为空，设置默认值为 0
-if [ -z "$UPLOAD" ] || ! [[ "$UPLOAD" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    UPLOAD=0
-fi
+# 构建消息内容
+MESSAGE="Date: $(date '+%Y-%m-%d')\nUpload: $UPLOAD_GB GB\nDownload: $DOWNLOAD_GB GB\nTotal: $TOTAL_GB GB"
 
-if [ -z "$DOWNLOAD" ] || ! [[ "$DOWNLOAD" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    DOWNLOAD=0
-fi
-
-# 计算流量的总和，单位转换为 GB
-TOTAL=$(echo "scale=2; ($UPLOAD + $DOWNLOAD) / (1024 * 1024)" | bc)
-
-# 输出当天流量统计
-MESSAGE="📅 Date: $(date +'%Y-%m-%d')\n📤 Upload: $(echo "scale=2; $UPLOAD / (1024 * 1024)" | bc) GB\n📥 Download: $(echo "scale=2; $DOWNLOAD / (1024 * 1024)" | bc) GB\n💥 Total: $TOTAL GB"
-
-# 向用户发送当前流量信息
+# 发送消息到 Telegram
 curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-    -d chat_id=$CHAT_ID \
+    -d chat_id="$CHAT_ID" \
     -d text="$MESSAGE"
+
+# 调试输出
+echo "Sent message to $CHAT_ID: $MESSAGE" >> /root/get_traffic_info_debug.log
