@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量12
+# 确保已经设置了 BOT_TOKEN 和 CHAT_ID 环境变量
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
     echo "BOT_TOKEN or CHAT_ID is not set!"
     exit 1
@@ -13,6 +13,7 @@ INTERFACE="ens5"
 DATE=$(date +'%Y-%m-%d')
 TIME=$(date +'%H:%M:%S')
 MONTH=$(date +'%m')
+YEAR=$(date +'%Y')
 
 # 获取当天的流量统计（从 vnstat 获取 JSON 数据）
 UPLOAD=$(vnstat -i $INTERFACE --json | jq -r '.interfaces[0].traffic.day[0].rx')
@@ -28,7 +29,7 @@ if [ "$DOWNLOAD" == "null" ]; then
 fi
 
 # 获取月累计流量
-MONTHLY_FILE="/root/traffic_data.txt"
+MONTHLY_FILE="/root/traffic_data_$YEAR-$MONTH.txt"
 if [ ! -f $MONTHLY_FILE ]; then
     echo "0" > $MONTHLY_FILE
 fi
@@ -45,7 +46,7 @@ echo "Upload: $UPLOAD_GB GB"
 echo "Download: $DOWNLOAD_GB GB"
 echo "Total: $TOTAL_GB GB"
 
-# 更新月累计流量
+# 只将当天的流量加入到月累计流量
 MONTHLY_TOTAL=$(echo "scale=2; $MONTHLY_TOTAL + $TOTAL_GB" | bc)
 echo $MONTHLY_TOTAL > $MONTHLY_FILE
 
