@@ -37,7 +37,7 @@ while true; do
             /root/vps-traffic-monitor/get_traffic_info.sh "$CHAT_ID" >> /root/bot_listener_debug.log
         fi
 
-        # 确保我们只处理一次此消息，更新 last_update_id
+        # 更新 last_update_id 确保不会重复处理相同的消息
         if [ -n "$UPDATE_ID" ]; then
             echo "Updating last_update_id to $UPDATE_ID" >> /root/bot_listener_debug.log
             last_update_id=$UPDATE_ID
