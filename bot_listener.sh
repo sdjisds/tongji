@@ -6,8 +6,17 @@ if [ -z "$BOT_TOKEN" ]; then
     exit 1
 fi
 
-# 初始化 last_update_id 为 -1，表示没有处理任何消息
-last_update_id=-1
+# 持久化 last_update_id 存储路径
+last_update_file="/root/.last_update_id"
+
+# 如果文件不存在，初始化 last_update_id
+if [ ! -f "$last_update_file" ]; then
+    echo "Initializing last_update_id" >> /root/bot_listener_debug.log
+    echo "0" > "$last_update_file"
+fi
+
+# 从文件中读取 last_update_id
+last_update_id=$(cat "$last_update_file")
 
 # 获取 Telegram 更新
 while true; do
@@ -37,10 +46,10 @@ while true; do
             /root/vps-traffic-monitor/get_traffic_info.sh "$CHAT_ID" >> /root/bot_listener_debug.log
         fi
 
-        # 更新 last_update_id 确保不会重复处理相同的消息
+        # 更新 last_update_id 并写入文件，确保不会重复处理相同的消息
         if [ -n "$UPDATE_ID" ]; then
             echo "Updating last_update_id to $UPDATE_ID" >> /root/bot_listener_debug.log
-            last_update_id=$UPDATE_ID
+            echo "$UPDATE_ID" > "$last_update_file"
         fi
     fi
 
